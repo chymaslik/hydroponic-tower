@@ -1,0 +1,93 @@
+# ===========================================
+# ESP32-C3 SuperMini - Hydroponic Tower
+# ===========================================
+
+esphome:
+  name: hydroponic-tower
+  friendly_name: Hydroponic Tower
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+logger:
+  level: INFO
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  ap:
+    ssid: "Hydroponics"
+    password: "12345678"
+
+web_server:
+  id: web_srv
+  port: 80
+
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# Синхронизация времени
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: Europe/Kiev
+    servers:
+      - 0.pool.ntp.org
+      - 1.pool.ntp.org
+
+# PWM выходы для MOSFET модулей
+output:
+  - platform: ledc
+    pin: GPIO4
+    id: pwm_lighting
+    frequency: 1000Hz
+    
+  - platform: ledc
+    pin: GPIO5
+    id: pwm_pump
+    frequency: 1000Hz
+
+# Управление освещением (вкл/выкл + яркость)
+light:
+  - platform: monochromatic
+    name: "Lighting"
+    id: lighting
+    output: pwm_lighting
+    restore_mode: ALWAYS_OFF
+    default_transition_length: 0s
+
+# Управление помпой (вкл/выкл + мощность)
+fan:
+  - platform: speed
+    name: "Water Pump"
+    id: water_pump
+    output: pwm_pump
+    restore_mode: ALWAYS_OFF
+    speed_count: 100
+
+# Restart switch
+switch:
+  - platform: restart
+    name: "Restart"
+
+# Hydroponic Controller (external component from GitHub)
+external_components:
+  - source: github://chymaslik/hydroponic-tower@main
+    components: [ hydroponic_controller ]
+
+hydroponic_controller:
+  pump_id: water_pump
+  light_id: lighting
+  time_id: sntp_time
+  web_server_id: web_srv
+  on_minutes: 5
+  off_minutes: 15
+  enabled: false
