@@ -22,6 +22,13 @@ wifi:
     ssid: "Hydroponics"
     password: "12345678"
 
+esp32_ble_tracker:
+  scan_parameters:
+    active: true
+
+bluetooth_proxy:
+  active: true
+
 web_server:
   id: web_srv
   port: 80
@@ -29,6 +36,7 @@ web_server:
 api:
   encryption:
     key: !secret api_key
+  reboot_timeout: 0s  # Отключить автоматическую перезагрузку при потере API
 
 ota:
   - platform: esphome
@@ -46,12 +54,12 @@ time:
 # PWM выходы для MOSFET модулей
 output:
   - platform: ledc
-    pin: GPIO4
+    pin: GPIO5
     id: pwm_lighting
     frequency: 1000Hz
     
   - platform: ledc
-    pin: GPIO5
+    pin: GPIO4
     id: pwm_pump
     frequency: 1000Hz
 

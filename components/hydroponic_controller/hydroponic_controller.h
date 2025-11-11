@@ -1,6 +1,7 @@
 #pragma once
 
 #include "esphome/core/component.h"
+#include "esphome/core/preferences.h"
 #include "esphome/components/fan/fan.h"
 #include "esphome/components/light/light_state.h"
 #include "esphome/components/time/real_time_clock.h"
@@ -12,6 +13,27 @@ namespace esphome {
 namespace hydroponic_controller {
 
 static const char *const TAG = "hydroponic_controller";
+
+// Структура для хранения настроек в энергонезависимой памяти
+struct Settings {
+  bool enabled = false;
+  int on_minutes = 5;
+  int off_minutes = 15;
+  bool light_sched_enabled = false;
+  int light_on_minutes = 1080;   // 18:00
+  int light_off_minutes = 540;   // 09:00
+  uint32_t crc = 0;
+  
+  uint32_t calculate_crc() const {
+    uint32_t hash = 2166136261u;
+    const uint8_t *data = reinterpret_cast<const uint8_t*>(this);
+    for (size_t i = 0; i < sizeof(Settings) - sizeof(crc); i++) {
+      hash ^= data[i];
+      hash *= 16777619u;
+    }
+    return hash;
+  }
+};
 
 class HydroponicController : public Component {
  public:
@@ -27,6 +49,26 @@ class HydroponicController : public Component {
 
   void setup() override {
     ESP_LOGCONFIG(TAG, "Setting up Hydroponic Controller...");
+    
+    // Загрузка сохранённых настроек из энергонезависимой памяти
+    pref_ = global_preferences->make_preference<Settings>(fnv1_hash("hydro_settings"));
+    Settings loaded;
+    if (pref_.load(&loaded)) {
+      if (loaded.crc == loaded.calculate_crc()) {
+        enabled_ = loaded.enabled;
+        on_minutes_ = loaded.on_minutes;
+        off_minutes_ = loaded.off_minutes;
+        light_sched_enabled_ = loaded.light_sched_enabled;
+        light_on_minutes_ = loaded.light_on_minutes;
+        light_off_minutes_ = loaded.light_off_minutes;
+        ESP_LOGI(TAG, "Settings loaded from flash");
+      } else {
+        ESP_LOGW(TAG, "Settings CRC mismatch, using defaults");
+      }
+    } else {
+      ESP_LOGI(TAG, "No saved settings, using defaults");
+    }
+    
     last_change_ms_ = millis();
     running_on_ = false;
     register_routes_();
@@ -110,6 +152,23 @@ class HydroponicController : public Component {
     running_on_ = false;
     ESP_LOGI(TAG, "Pump cycle stopped");
   }
+  
+  void save_settings_() {
+    Settings s;
+    s.enabled = enabled_;
+    s.on_minutes = on_minutes_;
+    s.off_minutes = off_minutes_;
+    s.light_sched_enabled = light_sched_enabled_;
+    s.light_on_minutes = light_on_minutes_;
+    s.light_off_minutes = light_off_minutes_;
+    s.crc = s.calculate_crc();
+    
+    if (pref_.save(&s)) {
+      ESP_LOGI(TAG, "Settings saved to flash");
+    } else {
+      ESP_LOGE(TAG, "Failed to save settings");
+    }
+  }
 
   void register_routes_();
   std::string build_index_() const;
@@ -128,6 +187,8 @@ class HydroponicController : public Component {
   bool light_sched_enabled_{false};
   int light_on_minutes_{1080};   // 18:00
   int light_off_minutes_{540};   // 09:00
+  
+  ESPPreferenceObject pref_;
 
   friend class Handler;
 };
@@ -296,17 +357,24 @@ inline void Handler::handleRequest(AsyncWebServerRequest *req) {
   
   // Pump schedule API
   if (url == "/api/pump-cycle" && req->method() == HTTP_POST) {
+    bool changed = false;
     if (req->hasParam("enabled")) {
       bool enabled = req->getParam("enabled")->value() == "1";
       owner_->enabled_ = enabled;
       if (enabled) owner_->start_cycle_(); 
       else owner_->stop_cycle_();
+      changed = true;
     }
     if (req->hasParam("on")) {
       owner_->on_minutes_ = std::max(1, std::min(120, atoi(req->getParam("on")->value().c_str())));
+      changed = true;
     }
     if (req->hasParam("off")) {
       owner_->off_minutes_ = std::max(1, std::min(120, atoi(req->getParam("off")->value().c_str())));
+      changed = true;
+    }
+    if (changed) {
+      owner_->save_settings_();
     }
     req->send(200, "application/json", "{\"ok\":true}");
     return;
@@ -335,14 +403,21 @@ inline void Handler::handleRequest(AsyncWebServerRequest *req) {
   
   // Light schedule API
   if (url == "/api/light-schedule" && req->method() == HTTP_POST) {
+    bool changed = false;
     if (req->hasParam("enabled")) {
       owner_->light_sched_enabled_ = req->getParam("enabled")->value() == "1";
+      changed = true;
     }
     if (req->hasParam("on")) {
       owner_->light_on_minutes_ = std::max(0, std::min(1439, atoi(req->getParam("on")->value().c_str())));
+      changed = true;
     }
     if (req->hasParam("off")) {
       owner_->light_off_minutes_ = std::max(0, std::min(1439, atoi(req->getParam("off")->value().c_str())));
+      changed = true;
+    }
+    if (changed) {
+      owner_->save_settings_();
     }
     req->send(200, "application/json", "{\"ok\":true}");
     return;
