@@ -31,7 +31,6 @@ wifi:
 web_server:
   id: web_srv
   port: 80
-  ota: true  # Включить OTA обновления через веб интерфейс
   version: 2
 
 api:
@@ -42,6 +41,7 @@ api:
 ota:
   - platform: esphome
     password: !secret ota_password
+  - platform: web_server  # OTA через веб интерфейс
 
 # Синхронизация времени
 time:
