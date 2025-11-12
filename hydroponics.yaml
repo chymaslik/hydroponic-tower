@@ -22,13 +22,6 @@ wifi:
     ssid: "Hydroponics"
     password: "12345678"
 
-esp32_ble_tracker:
-  scan_parameters:
-    active: true
-
-bluetooth_proxy:
-  active: true
-
 web_server:
   id: web_srv
   port: 80
@@ -85,6 +78,57 @@ fan:
 switch:
   - platform: restart
     name: "Restart"
+
+# Мониторинг производительности
+debug:
+  update_interval: 5s
+
+sensor:
+  # WiFi сигнал
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
+    
+  # Время работы
+  - platform: uptime
+    name: "Uptime"
+    update_interval: 60s
+    
+  # Свободная память (RAM)
+  - platform: template
+    name: "Free Heap"
+    lambda: |-
+      return heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024.0;
+    unit_of_measurement: 'kB'
+    update_interval: 10s
+    accuracy_decimals: 1
+    
+  # Процент свободной памяти
+  - platform: template
+    name: "Free Heap %"
+    lambda: |-
+      float total = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
+      float free = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+      return (free / total) * 100.0;
+    unit_of_measurement: '%'
+    update_interval: 10s
+    accuracy_decimals: 1
+    
+  # Время выполнения главного цикла
+  - platform: debug
+    loop_time:
+      name: "Loop Time"
+
+text_sensor:
+  # Версия ESPHome
+  - platform: version
+    name: "ESPHome Version"
+    hide_timestamp: true
+    
+  # IP адрес
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
 
 # Hydroponic Controller (external component from GitHub)
 external_components:
