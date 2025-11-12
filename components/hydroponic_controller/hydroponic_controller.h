@@ -48,12 +48,15 @@ class HydroponicController : public Component {
   void set_enabled(bool e) { enabled_ = e; }
 
   void setup() override {
-    ESP_LOGCONFIG(TAG, "Setting up Hydroponic Controller...");
+    ESP_LOGI(TAG, "========================================");
+    ESP_LOGI(TAG, ">>> Setting up Hydroponic Controller...");
     
     // Загрузка сохранённых настроек из энергонезависимой памяти
     pref_ = global_preferences->make_preference<Settings>(fnv1_hash("hydro_settings"));
     Settings loaded;
+    ESP_LOGI(TAG, "Attempting to load settings from NVS...");
     if (pref_.load(&loaded)) {
+      ESP_LOGI(TAG, "Settings found in NVS, checking CRC...");
       if (loaded.crc == loaded.calculate_crc()) {
         enabled_ = loaded.enabled;
         on_minutes_ = loaded.on_minutes;
@@ -61,19 +64,26 @@ class HydroponicController : public Component {
         light_sched_enabled_ = loaded.light_sched_enabled;
         light_on_minutes_ = loaded.light_on_minutes;
         light_off_minutes_ = loaded.light_off_minutes;
-        ESP_LOGI(TAG, "Settings loaded from flash");
+        ESP_LOGI(TAG, "✓ Settings loaded from flash successfully!");
+        ESP_LOGI(TAG, "  Pump schedule: %s, ON=%dmin, OFF=%dmin", 
+                 enabled_ ? "enabled" : "disabled", on_minutes_, off_minutes_);
+        ESP_LOGI(TAG, "  Light schedule: %s, ON=%02d:%02d, OFF=%02d:%02d",
+                 light_sched_enabled_ ? "enabled" : "disabled",
+                 light_on_minutes_/60, light_on_minutes_%60,
+                 light_off_minutes_/60, light_off_minutes_%60);
       } else {
-        ESP_LOGW(TAG, "Settings CRC mismatch, using defaults");
+        ESP_LOGW(TAG, "✗ Settings CRC mismatch, using defaults");
       }
     } else {
-      ESP_LOGI(TAG, "No saved settings, using defaults");
+      ESP_LOGI(TAG, "No saved settings found, using defaults");
     }
     
     last_change_ms_ = millis();
     running_on_ = false;
     register_routes_();
     if (enabled_) start_cycle_();
-    ESP_LOGCONFIG(TAG, "Hydroponic Controller setup complete");
+    ESP_LOGI(TAG, ">>> Hydroponic Controller setup complete!");
+    ESP_LOGI(TAG, "========================================");
   }
 
   void loop() override {
@@ -154,6 +164,7 @@ class HydroponicController : public Component {
   }
   
   void save_settings_() {
+    ESP_LOGI(TAG, ">>> save_settings_() called <<<");
     Settings s;
     s.enabled = enabled_;
     s.on_minutes = on_minutes_;
@@ -163,10 +174,13 @@ class HydroponicController : public Component {
     s.light_off_minutes = light_off_minutes_;
     s.crc = s.calculate_crc();
     
+    ESP_LOGI(TAG, "Saving: enabled=%d, on=%d, off=%d, light_sched=%d", 
+             s.enabled, s.on_minutes, s.off_minutes, s.light_sched_enabled);
+    
     if (pref_.save(&s)) {
-      ESP_LOGI(TAG, "Settings saved to flash");
+      ESP_LOGI(TAG, "✓ Settings saved to flash successfully!");
     } else {
-      ESP_LOGE(TAG, "Failed to save settings");
+      ESP_LOGE(TAG, "✗ FAILED to save settings to flash!");
     }
   }
 

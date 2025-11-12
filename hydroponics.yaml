@@ -12,7 +12,9 @@ esp32:
     type: arduino
 
 logger:
-  level: INFO
+  level: DEBUG
+  logs:
+    hydroponic_controller: DEBUG
 
 wifi:
   ssid: !secret wifi_ssid
