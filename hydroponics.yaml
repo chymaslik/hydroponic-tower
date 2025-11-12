@@ -2,9 +2,13 @@
 # ESP32-C3 SuperMini - Hydroponic Tower
 # ===========================================
 
+substitutions:
+  build_number: "2024.11.12.001"
+
 esphome:
   name: hydroponic-tower
   friendly_name: Hydroponic Tower
+  comment: Build ${build_number}
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -27,6 +31,8 @@ wifi:
 web_server:
   id: web_srv
   port: 80
+  ota: true  # Включить OTA обновления через веб интерфейс
+  version: 2
 
 api:
   encryption:
@@ -126,6 +132,13 @@ text_sensor:
   - platform: version
     name: "ESPHome Version"
     hide_timestamp: true
+  
+  # Номер билда
+  - platform: template
+    name: "Build Number"
+    lambda: |-
+      return {"${build_number}"};
+    update_interval: never
     
   # IP адрес
   - platform: wifi_info
@@ -136,7 +149,6 @@ text_sensor:
 external_components:
   - source: github://chymaslik/hydroponic-tower@main
     components: [ hydroponic_controller ]
-    refresh: 1min  # Принудительное обновление
 
 hydroponic_controller:
   pump_id: water_pump
