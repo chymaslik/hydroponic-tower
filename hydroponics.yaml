@@ -136,6 +136,7 @@ text_sensor:
 external_components:
   - source: github://chymaslik/hydroponic-tower@main
     components: [ hydroponic_controller ]
+    refresh: 1min  # Принудительное обновление
 
 hydroponic_controller:
   pump_id: water_pump

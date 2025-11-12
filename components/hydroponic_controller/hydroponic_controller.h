@@ -137,6 +137,7 @@ class HydroponicController : public Component {
 
   void dump_config() override {
     ESP_LOGCONFIG(TAG, "Hydroponic Controller:");
+    ESP_LOGCONFIG(TAG, "  NVS Status: %s", settings_loaded_from_nvs_ ? "✓ Loaded from flash" : "✗ Using defaults");
     ESP_LOGCONFIG(TAG, "  Pump ON: %d min", on_minutes_);
     ESP_LOGCONFIG(TAG, "  Pump OFF: %d min", off_minutes_);
     ESP_LOGCONFIG(TAG, "  Pump Schedule: %s", enabled_ ? "enabled" : "disabled");
