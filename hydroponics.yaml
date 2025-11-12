@@ -3,7 +3,7 @@
 # ===========================================
 
 substitutions:
-  build_number: "2024.11.12.001"
+  build_number: "2024.11.12.002"
 
 esphome:
   name: hydroponic-tower
